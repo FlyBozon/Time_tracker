@@ -2,8 +2,9 @@ import sys
 import time
 from datetime import datetime, timedelta
 from collections import defaultdict
+import numpy as np
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QListWidget, QLineEdit, QMessageBox
+    QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QListWidget, QLineEdit, QMessageBox, QComboBox, QHBoxLayout
 )
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -32,6 +33,7 @@ class TaskTracker(QWidget):
         self.load_tasks()
         self.start_time = None
         self.selected_task = None
+        self.on_break = False
 
         layout = QVBoxLayout()
 
@@ -46,6 +48,26 @@ class TaskTracker(QWidget):
         self.add_task_input.setPlaceholderText("Add new task...")
         layout.addWidget(self.add_task_input)
 
+        self.add_description_input = QLineEdit()
+        self.add_description_input.setPlaceholderText("Add description...")
+        layout.addWidget(self.add_description_input)
+
+        combo_layout = QHBoxLayout()
+
+        combo_layout.addWidget(QLabel("Project:"))
+        self.project_combo = QComboBox()
+        self.project_combo.addItems(np.unique([task["project"] for task in self.tasks]))
+        self.project_combo.setFixedWidth(150)
+        combo_layout.addWidget(self.project_combo)
+
+        combo_layout.addWidget(QLabel("Category:"))
+        self.category_combo = QComboBox()
+        self.category_combo.addItems(np.unique([task["category"] for task in self.tasks]))
+        self.category_combo.setFixedWidth(150)
+        combo_layout.addWidget(self.category_combo)
+
+        layout.addLayout(combo_layout)
+
         self.add_task_button = QPushButton("Add Task")
         self.add_task_button.clicked.connect(self.add_task)
         layout.addWidget(self.add_task_button)
@@ -53,6 +75,10 @@ class TaskTracker(QWidget):
         self.start_button = QPushButton("Start Tracking")
         self.start_button.clicked.connect(self.start_tracking)
         layout.addWidget(self.start_button)
+
+        self.break_button = QPushButton("Break")
+        self.break_button.clicked.connect(self.break_time)
+        layout.addWidget(self.break_button)
 
         self.stop_button = QPushButton("Stop & Save")
         self.stop_button.clicked.connect(self.stop_and_save)
@@ -70,22 +96,29 @@ class TaskTracker(QWidget):
     def load_tasks(self):
         self.tasks = []
         try:
-            records = TASKS_SHEET.get_all_records(expected_headers=["Task Name", "Description"])
+            records = TASKS_SHEET.get_all_records(expected_headers=["Task Name", "Description", "Project", "Category"])
             for row in records:
-                self.tasks.append({"name": row["Task Name"], "description": row["Description"]})
+                self.tasks.append({"name": row["Task Name"], "description": row["Description"], "project": row["Project"], "category": row["Category"]})
         except gspread.exceptions.GSpreadException as e:
             QMessageBox.critical(self, "Error", f"Failed to load tasks: {str(e)}")
 
     def add_task(self):
         task_name = self.add_task_input.text().strip()
+        task_description = self.add_description_input.text().strip()
+        project_name = self.project_combo.currentText().strip()
+        category_name = self.category_combo.currentText().strip()
         if task_name:
-            TASKS_SHEET.append_row([task_name, ""])
-            self.tasks.append({"name": task_name, "description": ""})
+            TASKS_SHEET.append_row([task_name, task_description, project_name, category_name])
+            self.tasks.append({"name": task_name, "description": task_description})
             self.list_widget.addItem(task_name)
             self.add_task_input.clear()
+            self.add_description_input.clear()
+            project_name = self.project_combo.clear()
+            category_name = self.category_combo.clear()
             QMessageBox.information(self, "Task Added", f"Task '{task_name}' added.")
         else:
             QMessageBox.warning(self, "Error", "Please enter a valid task name.")
+
 
     def start_tracking(self):
         selected_items = self.list_widget.selectedItems()
@@ -95,6 +128,26 @@ class TaskTracker(QWidget):
         self.selected_task = selected_items[0].text()
         self.start_time = time.time()
         self.status_label.setText(f"Tracking: {self.selected_task}")
+
+    def break_time(self):
+        if (not self.start_time) and (not self.on_break):
+            QMessageBox.warning(self, "Error", "You are not doing anything.")
+            return
+        self.on_break = not self.on_break
+        if self.on_break:
+            duration = int(time.time() - self.start_time)
+            self.start_time = None
+            self.status_label.setText("Status: Break")
+            self.save_to_google_sheets(self.selected_task, duration)
+            QMessageBox.information(self, "Break", f"Saved {duration} seconds for '{self.selected_task}'. Have a nice break and come back later!")
+        else:
+            selected_items = self.list_widget.selectedItems()
+            if not selected_items:
+                QMessageBox.warning(self, "Error", "Please select a task.")
+                return
+            self.selected_task = selected_items[0].text()
+            self.start_time = time.time()
+            self.status_label.setText(f"Tracking: {self.selected_task}")
 
     def stop_and_save(self):
         if self.start_time is None or self.selected_task is None:
