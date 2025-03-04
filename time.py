@@ -40,8 +40,14 @@ class TaskTracker(QWidget):
         self.label = QLabel("Select a task:")
         layout.addWidget(self.label)
 
+#show all tasks
+        # self.list_widget = QListWidget()
+        # self.list_widget.addItems([task["name"] for task in self.tasks])
+        # layout.addWidget(self.list_widget)
+
+#only active tasks
         self.list_widget = QListWidget()
-        self.list_widget.addItems([task["name"] for task in self.tasks])
+        self.list_widget.addItems([task["name"] for task in self.tasks if task.get("active", "").lower() == "yes"])
         layout.addWidget(self.list_widget)
 
         self.add_task_input = QLineEdit()
@@ -96,9 +102,9 @@ class TaskTracker(QWidget):
     def load_tasks(self):
         self.tasks = []
         try:
-            records = TASKS_SHEET.get_all_records(expected_headers=["Task Name", "Description", "Project", "Category"])
+            records = TASKS_SHEET.get_all_records(expected_headers=["Is active?", "Task Name", "Description", "Project", "Category"])
             for row in records:
-                self.tasks.append({"name": row["Task Name"], "description": row["Description"], "project": row["Project"], "category": row["Category"]})
+                self.tasks.append({"active":row["Is active?"], "name": row["Task Name"], "description": row["Description"], "project": row["Project"], "category": row["Category"]})
         except gspread.exceptions.GSpreadException as e:
             QMessageBox.critical(self, "Error", f"Failed to load tasks: {str(e)}")
 
@@ -136,10 +142,12 @@ class TaskTracker(QWidget):
         self.on_break = not self.on_break
         if self.on_break:
             duration = int(time.time() - self.start_time)
-            self.start_time = None
+            self.start_time = time.time()
             self.status_label.setText("Status: Break")
             self.save_to_google_sheets(self.selected_task, duration)
             QMessageBox.information(self, "Break", f"Saved {duration} seconds for '{self.selected_task}'. Have a nice break and come back later!")
+            self.selected_task = "Break"
+            self.start_time = time.time()
         else:
             selected_items = self.list_widget.selectedItems()
             if not selected_items:
