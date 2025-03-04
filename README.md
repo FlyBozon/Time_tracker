@@ -36,24 +36,33 @@ Client ID & Client Secret → Identifies the app to Google.
 Project ID → Links the credentials to a specific Google Cloud project.
 Private Key → Used for authentication.
 Service Account Email → This acts as a virtual user with permission to modify your spreadsheet.
+
+---
+
 #### Step 1: Create a Google Cloud Project
 Go to Google Cloud Console.
 Click "Create Project" and give it a name (e.g., TaskTimeTracker).
 Navigate to "APIs & Services" > "Library".
 Search for Google Sheets API and enable it.
 Search for Google Drive API and enable it.
+
+---
 #### Step 2: Create Service Account & Download Credentials
 Go to "APIs & Services" > "Credentials".
 Click "Create Credentials" > "Service Account".
 Give it a name (e.g., TaskTrackerService).
 Click "Create", then go to the "Keys" tab.
 Click "Add Key" > "JSON", and it will download a file (e.g., credentials.json).
+
+---
 #### Step 3: Share Your Google Sheets with the Service Account
 Open Google Sheets.
 Create a new spreadsheet and rename it (e.g., "TaskTracking").
 Click "Share" and add the email from your credentials.json
 (it looks like task-tracker@your-project.iam.gserviceaccount.com).
 Give it Editor permissions.
+
+---
 ### 3. Configure Google Sheets in Code
 Place your downloaded credentials.json file in the project directory.
 Ensure the file is named exactly as credentials.json, or update the code in time.py:
@@ -69,6 +78,7 @@ python time.py
 ```
 This will launch the PyQt5 UI.
 
+---
 ### Google Sheets Structure
 The app interacts with three sheets:
 
@@ -87,6 +97,7 @@ Open a Pull Request.
 License
 This project is licensed under the MIT License.
 
+---
 ### Troubleshooting
 1. Permission Denied on Google Sheets?
 Ensure the service account email has Editor access to your Google Sheet.
