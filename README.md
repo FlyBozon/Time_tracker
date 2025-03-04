@@ -9,6 +9,7 @@ It allows users to track task durations, analyze weekly statistics, and archive 
 - **Automatically move processed records** to an archive.
 - **Prevents duplicate "Sum" rows** in statistics.
 - **Ensures case-insensitive task matching.**
+- **Break counter**
 
 ---
 
